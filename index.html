@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Alphabet Hunters 🗺️</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.js"></script>
+  <style>
+    /* Safe-area padding helpers (for iOS notch / home bar) */
+    .pt-safe-top  { padding-top: env(safe-area-inset-top, 0px); }
+    .pb-safe      { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .pb-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+    /* Tailwind animate-in utilities (subset of tailwindcss-animate) */
+    .animate-in { animation-duration: 150ms; animation-fill-mode: both; }
+    .fade-in    { animation-name: fadeIn; }
+    .zoom-in-95 { animation-name: zoomIn95; }
+    .slide-in-from-bottom-2 { animation-name: slideInFromBottom; }
+    .slide-in-from-top-2    { animation-name: slideInFromTop; }
+    @keyframes fadeIn          { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes zoomIn95        { from { opacity: 0; transform: scale(.95) } to { opacity: 1; transform: scale(1) } }
+    @keyframes slideInFromBottom { from { transform: translateY(8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+    @keyframes slideInFromTop    { from { transform: translateY(-8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useCallback } = React;
+
+    /* ── Lucide icons with emoji fallbacks ──────────────────────────── */
+    const _L = window.LucideReact || {};
+    const _icon = (emoji) => ({ size = 24, className = '', strokeWidth }) =>
+      <span className={className} style={{ fontSize: Math.round(size * 0.85) + 'px', display: 'inline-flex', alignItems: 'center' }}>{emoji}</span>;
+
+    const Trophy    = _L.Trophy    || _icon('🏆');
+    const MapPin    = _L.MapPin    || _icon('📍');
+    const X         = _L.X         || _icon('✕');
+    const Navigation = _L.Navigation || _icon('🧭');
+    const HelpCircle = _L.HelpCircle || _icon('❓');
+    const ChevronDown = _L.ChevronDown || _icon('▾');
+    const ChevronUp   = _L.ChevronUp   || _icon('▴');
+    const Delete    = _L.Delete    || _icon('⌫');
+    const Star      = _L.Star      || _icon('★');
+    const Puzzle    = _L.Puzzle    || _icon('🧩');
+    const Flashlight = _L.Flashlight || _L.Torch || _icon('🔦');
+    const Globe     = _L.Globe     || _icon('🌏');
+    const Lock      = _L.Lock      || _icon('🔒');
+    const Check     = _L.Check     || _icon('✓');
+    const Gift      = _L.Gift      || _icon('🎁');
+    const Key       = _L.Key       || _icon('🔑');
+
+
+// ----------------------------------------------------------------------
+// 0. 全局樣式
+// ----------------------------------------------------------------------
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+    
+    :root {
+      --sat: env(safe-area-inset-top);
+      --sab: env(safe-area-inset-bottom);
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background-color: #87CEEB;
+      background-image: 
+        radial-gradient(circle at 15% 50%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 25%),
+        radial-gradient(circle at 85% 30%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 25%);
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    .btn-cartoon {
+      transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      border-bottom-width: 4px;
+      transform: translateY(0);
+    }
+    .btn-cartoon:active {
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+      margin-bottom: 2px;
+      filter: brightness(0.95);
+    }
+
+    .key-cartoon {
+      border-bottom-width: 3px;
+      transition: background-color 0.05s;
+    }
+    .key-cartoon:active {
+      transform: none;
+      border-bottom-width: 3px;
+      margin-bottom: 0;
+      background-color: #d1d5db !important;
+    }
+
+    .lifeline-btn {
+      transition: all 0.2s;
+    }
+    .lifeline-btn:disabled {
+      opacity: 0.6;
+      filter: grayscale(100%);
+      cursor: not-allowed;
+      transform: translateY(2px);
+      border-bottom-width: 0;
+    }
+
+    .wave-header {
+      position: relative;
+      background: #22c55e;
+      padding-bottom: 10px;
+      border-bottom: 4px solid #15803d;
+    }
+
+    .letter-slot {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-bottom-width: 4px;
+    }
+    .letter-slot.filled {
+      transform: translateY(0);
+      background-color: white;
+      border-color: #d1d5db;
+      color: #374151;
+    }
+    .letter-slot.active {
+      border-color: #facc15;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 0 0 #eab308;
+      z-index: 10;
+    }
+    .letter-slot.locked {
+      background-color: #86efac;
+      border-color: #22c55e;
+      color: #14532d;
+      box-shadow: none;
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+    }
+  `}</style>
+);
+
+// ----------------------------------------------------------------------
+// 1. 遊戲資料
+// ----------------------------------------------------------------------
+const LEVELS_SOURCE = [
+  {
+    id: 1,
+    title: "Level 1",
+    clue: "I have no color. I have no shape. You drink me when you are thirsty.",
+    chineseHint: "提示：它是「水」",
+    answer: "WATER",
+    locationName: "Sunken Plaza (水幕廣場)",
+    locationEng: "Sunken Plaza / MRT Station",
+    description: "去捷運站出口，找那一面會噴水的牆！",
+    color: "bg-blue-400",
+    shadow: "border-blue-700",
+    icon: "💧"
+  },
+  {
+    id: 2,
+    title: "Level 2",
+    clue: "I have two wings and two legs. I lay eggs. I can sing and fly in the sky.",
+    chineseHint: "提示：它是「鳥」",
+    answer: "BIRD",
+    locationName: "Ecological Pond (生態池賞鳥平台)",
+    locationEng: "Ecological Pond",
+    description: "去生態池找找看，那裡有很多大砲相機喔。",
+    color: "bg-green-400",
+    shadow: "border-green-700",
+    icon: "🦆"
+  },
+  {
+    id: 3,
+    title: "Level 3",
+    clue: "You cannot see me, but you can hear me. You can dance with me.",
+    chineseHint: "提示：它是「音樂」",
+    answer: "MUSIC",
+    locationName: "Amphitheater (露天音樂台)",
+    locationEng: "Amphitheater",
+    description: "去公園裡唯一的紅色座位區和大舞台。",
+    color: "bg-purple-400",
+    shadow: "border-purple-700",
+    icon: "🎵"
+  },
+  {
+    id: 4,
+    title: "Level 4",
+    clue: "I lived a long time ago. I am very big and scary. ROAR!",
+    chineseHint: "提示：它是「恐龍」",
+    answer: "DINOSAUR",
+    altAnswers: ["DINOSAUR"],
+    locationName: "Playground (恐龍滑梯)",
+    locationEng: "Playground",
+    description: "去兒童遊戲場，找那一隻超大的恐龍！",
+    color: "bg-orange-400",
+    shadow: "border-orange-700",
+    icon: "🦖"
+  },
+  {
+    id: 5,
+    title: "Level 5",
+    clue: "I am very small and brown. You find me at the beach or a park.",
+    chineseHint: "提示：它是「沙子」",
+    answer: "SAND",
+    locationName: "Sandpit (沙坑)",
+    locationEng: "Sandpit",
+    description: "就在恐龍旁邊，地上有圍起來的一區。",
+    color: "bg-yellow-400",
+    shadow: "border-yellow-600",
+    icon: "🏖️"
+  },
+  {
+    id: 6,
+    title: "Level 6",
+    clue: "I smell good. I have many colors like red, pink, or yellow.",
+    chineseHint: "提示：它是「花」",
+    answer: "FLOWER",
+    locationName: "Azalea Garden (杜鵑冶園)",
+    locationEng: "Azalea Garden",
+    description: "找寫著 Azalea Garden 的大石頭，那裡有很多花。",
+    color: "bg-pink-400",
+    shadow: "border-pink-700",
+    icon: "🌺"
+  },
+  {
+    id: 7,
+    title: "Level 7",
+    clue: "I am a number. I am 1 plus 1. How many eyes do you have?",
+    chineseHint: "提示：它是「數字 2」",
+    answer: "TWO",
+    locationName: "MRT Exit 2 (捷運2號出口)",
+    locationEng: "Exit 2",
+    description: "抬頭看捷運站的黃色出口指標，找這個數字。",
+    color: "bg-red-400",
+    shadow: "border-red-700",
+    icon: "2️⃣"
+  },
+  {
+    id: 8,
+    title: "Level 8",
+    clue: "I am a shoe with wheels. Put me on to go fast on the ground.",
+    chineseHint: "提示：它是「溜冰鞋」",
+    answer: "SKATE",
+    locationName: "Skating Rink (溜冰場)",
+    locationEng: "Skating Rink",
+    description: "去公園角落，找有人在溜直排輪的地方。",
+    color: "bg-blue-400",
+    shadow: "border-blue-600",
+    icon: "⛸️"
+  },
+  {
+    id: 9,
+    title: "Level 9",
+    clue: "I am round. I can bounce. You throw me and kick me in a game.",
+    chineseHint: "提示：它是「球」",
+    answer: "BALL",
+    altAnswers: ["BASKETBALL"],
+    locationName: "Basketball Court (籃球場)",
+    locationEng: "Basketball Court",
+    description: "跟著拍球的聲音走，找有籃框的地方！",
+    color: "bg-orange-500",
+    shadow: "border-orange-800",
+    icon: "🏀"
+  }
+];
+
+const KEYBOARD_ROWS = [
+  ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+  ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+  ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
+];
+
+const WINNING_INDICES = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6]
+];
+
+const PRAISE_WORDS = ["AWESOME!", "GREAT!", "SUPERB!", "YAY!", "COOL!", "WOW!", "NICE!", "YES!"];
+
+const shuffleArray = (array) => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
+// ----------------------------------------------------------------------
+// 1. 小組件
+// ----------------------------------------------------------------------
+
+const ConfettiExplosion = () => {
+  const particles = Array.from({ length: 40 }).map((_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    color: ['#FFD700', '#FF6347', '#32CD32', '#1E90FF', '#FF69B4'][Math.floor(Math.random() * 5)],
+    delay: Math.random() * 0.3,
+    rotation: Math.random() * 360,
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute w-4 h-4 rounded-sm animate-confetti-fall shadow-sm border border-black/10"
+          style={{
+            left: `${p.x}%`,
+            top: `-5%`,
+            backgroundColor: p.color,
+            transform: `rotate(${p.rotation}deg)`,
+            animationDelay: `${p.delay}s`,
+            animationDuration: '2.5s',
+            opacity: 1
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes confetti-fall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        .animate-confetti-fall {
+          animation-name: confetti-fall;
+          animation-timing-function: ease-out;
+          animation-fill-mode: forwards;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+const VirtualKeyboard = ({ onKeyClick, onSubmit }) => {
+  return (
+    <div className="bg-[#E5E7EB] p-2 pb-safe shrink-0 border-t-4 border-white w-full rounded-t-[2rem] shadow-[inset_0_4px_8px_rgba(0,0,0,0.1)]">
+      <div className="flex flex-col gap-2 w-full max-w-lg mx-auto pt-2 pb-2">
+        <div className="flex justify-center gap-[4px] w-full px-1">
+          {KEYBOARD_ROWS[0].map((key) => (
+            <button
+              key={key}
+              onClick={() => onKeyClick(key)}
+              className="h-11 flex-1 rounded-md shadow-sm font-bold text-gray-700 bg-white border-b-2 border-gray-300 key-cartoon flex items-center justify-center text-lg active:bg-gray-100"
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-center gap-[4px] w-full px-4">
+          {KEYBOARD_ROWS[1].map((key) => (
+            <button
+              key={key}
+              onClick={() => onKeyClick(key)}
+              className="h-11 flex-1 rounded-md shadow-sm font-bold text-gray-700 bg-white border-b-2 border-gray-300 key-cartoon flex items-center justify-center text-lg active:bg-gray-100"
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-center gap-[4px] w-full px-1">
+          {KEYBOARD_ROWS[2].map((key) => (
+            <button
+              key={key}
+              onClick={() => onKeyClick(key)}
+              className="h-11 flex-1 rounded-md shadow-sm font-bold text-gray-700 bg-white border-b-2 border-gray-300 key-cartoon flex items-center justify-center text-lg active:bg-gray-100"
+            >
+              {key}
+            </button>
+          ))}
+          <button
+            onClick={() => onKeyClick('BACKSPACE')}
+            className="h-11 flex-[1.5] rounded-md shadow-sm font-bold text-white bg-red-400 border-b-2 border-red-600 key-cartoon flex items-center justify-center active:bg-red-500"
+          >
+            <Delete size={20} strokeWidth={3} />
+          </button>
+        </div>
+        <div className="px-1 mt-1">
+          <button 
+            onClick={onSubmit}
+            className="w-full bg-green-500 text-white h-12 rounded-xl font-black text-2xl border-b-4 border-green-700 btn-cartoon uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:bg-green-600"
+          >
+            CHECK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BingoGrid = ({ gridLevels, solved, bingoIndices, onGridClick }) => {
+  return (
+    <div className="w-full flex-1 flex items-center justify-center min-h-0 my-2 px-1">
+      <div className="bg-[#FFF8E7] p-2 rounded-[1.5rem] shadow-[0_6px_0_0_rgba(0,0,0,0.15)] border-4 border-white w-full h-full max-h-[420px] flex flex-col justify-center relative">
+        <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-gray-300 shadow-inner"></div>
+        <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gray-300 shadow-inner"></div>
+        <div className="absolute bottom-2 left-2 w-2 h-2 rounded-full bg-gray-300 shadow-inner"></div>
+        <div className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-gray-300 shadow-inner"></div>
+
+        <div className="grid grid-cols-3 gap-2 h-full relative z-10">
+          {gridLevels.map((level, index) => {
+            const isSolved = solved.includes(level.id);
+            const isBingo = bingoIndices.includes(index);
+            return (
+              <button
+                key={level.id}
+                onClick={() => onGridClick(level)}
+                className={`
+                  rounded-xl flex flex-col items-center justify-center p-0.5 relative overflow-hidden btn-cartoon h-full
+                  ${isSolved 
+                    ? `${level.color} ${level.shadow} text-white shadow-sm border-2 border-white/20` 
+                    : 'bg-[#DEB887] border-[#A0522D] text-[#8B4513]'
+                  }
+                  ${isBingo ? 'ring-4 ring-yellow-300 z-10' : ''}
+                `}
+              >
+                {isBingo && <div className="absolute inset-0 bg-yellow-400/30 animate-pulse z-0 pointer-events-none"></div>}
+                <div className="relative z-10 flex flex-col items-center w-full justify-center h-full">
+                  {isSolved ? (
+                    <>
+                      <span className="text-2xl sm:text-4xl mb-0.5 filter drop-shadow-md">{level.icon}</span>
+                      <span className="text-[9px] sm:text-[10px] font-black uppercase truncate w-full text-center px-1 bg-black/10 rounded-full leading-tight py-0.5">{level.answer}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-3xl sm:text-4xl font-black opacity-40">?</span>
+                      <span className="absolute bottom-1 right-1 text-[10px] font-black opacity-60">#{level.id}</span>
+                    </>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LetterSlots = ({ inputArray, lockedIndices }) => {
+  const answerLength = inputArray.length;
+  let slotSizeClass = "w-10 h-12 sm:w-12 sm:h-14 text-3xl sm:text-4xl";
+  if (answerLength >= 8) {
+    slotSizeClass = "w-7 h-9 sm:w-8 sm:h-10 text-lg sm:text-xl";
+  } else if (answerLength >= 6) {
+    slotSizeClass = "w-8 h-10 sm:w-10 sm:h-12 text-2xl sm:text-3xl";
+  }
+
+  let activeIndex = -1;
+  for (let i = 0; i < answerLength; i++) {
+    if (!inputArray[i] && !lockedIndices[i]) {
+      activeIndex = i;
+      break;
+    }
+  }
+
+  return (
+    <div className="flex justify-center gap-1 sm:gap-1.5 flex-wrap">
+      {inputArray.map((char, i) => {
+        const isLocked = lockedIndices[i];
+        const isFilled = !!char;
+        const isActive = (i === activeIndex);
+
+        return (
+          <div 
+            key={i} 
+            className={`
+              letter-slot ${slotSizeClass} rounded-lg flex items-center justify-center font-black text-gray-700 bg-gray-100 border-b-4 border-gray-300 shadow-sm relative
+              ${isLocked ? 'locked' : ''}
+              ${isActive && !isLocked ? 'active bg-white' : ''}
+              ${isFilled && !isLocked ? 'filled' : ''}
+            `}
+          >
+            {isLocked && <Lock size={12} className="absolute top-0.5 right-0.5 text-green-800 opacity-60" />}
+            {char}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// V37: Final Mission Modal
+const FinalMissionModal = ({ onClose }) => {
+  return (
+    <div className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-4 animate-in fade-in backdrop-blur-md">
+      <div className="bg-yellow-400 w-full max-w-sm rounded-3xl p-1 shadow-2xl overflow-hidden relative border-8 border-white animate-in zoom-in-95">
+        <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
+           <div className="absolute top-1/2 left-1/2 w-[200%] h-[200%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg,transparent_0_20deg,white_20deg_40deg,transparent_40deg_60deg,white_60deg_80deg,transparent_80deg_100deg,white_100deg_120deg,transparent_120deg_140deg,white_140deg_160deg,transparent_160deg_180deg,white_180deg_200deg,transparent_200deg_220deg,white_220deg_240deg,transparent_240deg_260deg,white_260deg_280deg,transparent_280deg_300deg,white_300deg_320deg,transparent_320deg_340deg,white_340deg_360deg)] animate-[spin_20s_linear_infinite]"></div>
+        </div>
+
+        <div className="bg-yellow-50 rounded-[1.2rem] p-6 text-center relative z-10 flex flex-col items-center gap-4 border-4 border-yellow-600">
+          <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg border-4 border-yellow-400 mb-2">
+            <Trophy size={48} className="text-yellow-500 drop-shadow-md animate-bounce" />
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-black text-yellow-900 leading-none mb-1">MISSION ALMOST</h2>
+            <h2 className="text-3xl font-black text-red-500 leading-none">COMPLETE!</h2>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border-2 border-yellow-200 w-full shadow-sm">
+            <p className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">YOUR FINAL TASK:</p>
+            <ul className="text-left space-y-3">
+              <li className="flex items-center gap-3 text-gray-800 font-bold">
+                <span className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shrink-0">1</span>
+                <span>Get the last sticker!</span>
+              </li>
+              <li className="flex items-center gap-3 text-gray-800 font-bold">
+                <span className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shrink-0">2</span>
+                <span>Make the <span className="text-purple-600 font-black">SECRET PASSWORD</span>!</span>
+              </li>
+              <li className="flex items-center gap-3 text-gray-800 font-bold">
+                <span className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shrink-0">3</span>
+                <span>Go to <span className="text-red-500 font-black">START POINT</span>!</span>
+              </li>
+            </ul>
+          </div>
+
+          <button 
+            onClick={onClose}
+            className="w-full bg-red-500 text-white py-4 rounded-xl font-black border-b-4 border-red-800 btn-cartoon text-xl shadow-lg flex items-center justify-center gap-2 mt-2"
+          >
+            <Gift size={24} /> GET MY GIFT!
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 1.6 遊戲模態組件
+const GameModal = ({ level, showResult, isLastLevel, inputArray, lockedIndices, errorMsg, praiseText, lifelines, activeHint, onClose, onKeyClick, onSubmit, onUseLifeline, onFinalMission }) => {
+  const [confirmingType, setConfirmingType] = useState(null); 
+
+  if (!level) return null;
+
+  const handleLifelineClick = (type) => {
+    setConfirmingType(type);
+  };
+
+  const handleConfirmLifeline = () => {
+    if (confirmingType) {
+      onUseLifeline(confirmingType); 
+      setConfirmingType(null); 
+    }
+  };
+
+  const handleOkClick = () => {
+    if (isLastLevel) {
+      onFinalMission(); 
+      onClose(); 
+    } else {
+      onClose(); 
+    }
+  };
+
+  const okButtonStyle = isLastLevel 
+    ? "bg-yellow-400 text-yellow-900 border-yellow-600 animate-pulse shadow-lg ring-4 ring-yellow-200" 
+    : "bg-green-500 text-white border-green-700";
+
+  const okButtonText = isLastLevel
+    ? "I GOT THE STICKER! 🌟"
+    : "OK! GO FIND IT!";
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-sm animate-in fade-in" 
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className="absolute inset-0" onClick={onClose}></div>
+      <div className="relative w-full sm:w-[95%] sm:max-w-md mx-auto bg-[#FFF8E7] rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col border-t-8 border-green-500">
+        
+        <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 z-10 p-1.5 bg-white rounded-full shadow-[0_3px_0_0_rgba(0,0,0,0.1)] btn-cartoon border-2 border-gray-100">
+          <X size={24} strokeWidth={3} />
+        </button>
+
+        {confirmingType && (
+          <div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center p-6 animate-in fade-in">
+            <div className="bg-white rounded-2xl p-5 w-full text-center shadow-2xl border-4 border-yellow-400 animate-in zoom-in-95">
+              <div className="mb-4">
+                <span className="text-4xl">
+                  {confirmingType === 'puzzle' && '🧩'}
+                  {confirmingType === 'flash' && '🔦'}
+                  {confirmingType === 'trans' && '🌏'}
+                </span>
+              </div>
+              <h3 className="text-xl font-black text-gray-800 mb-1">
+                {confirmingType === 'puzzle' && 'SCRAMBLE LETTERS?'}
+                {confirmingType === 'flash' && 'SHOW 1st LETTER?'}
+                {confirmingType === 'trans' && 'SEE CHINESE?'}
+              </h3>
+              <p className="text-sm text-gray-500 font-bold mb-6">
+                {confirmingType === 'puzzle' && 'Mix letters to help! (Only 1 time!)'}
+                {confirmingType === 'flash' && 'Reveal the start! (Only 1 time!)'}
+                {confirmingType === 'trans' && 'Show meaning! (Only 1 time!)'}
+              </p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setConfirmingType(null)}
+                  className="flex-1 py-3 rounded-xl font-black bg-gray-200 text-gray-600 border-b-4 border-gray-300 btn-cartoon"
+                >
+                  NO
+                </button>
+                <button 
+                  onClick={handleConfirmLifeline}
+                  className="flex-1 py-3 rounded-xl font-black bg-green-500 text-white border-b-4 border-green-700 btn-cartoon"
+                >
+                  YES!
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showResult ? (
+          // 結果模式 (Result Mode)
+          <div className="flex flex-col h-full overflow-hidden bg-[#FFF8E7]">
+            <div className={`${level.color} p-4 text-white text-center relative shrink-0 rounded-b-[2rem] shadow-md border-b-8 border-black/10`}>
+                <div className="w-14 h-14 bg-white/20 rounded-full mx-auto flex items-center justify-center backdrop-blur-md mb-1 text-3xl shadow-sm animate-bounce border-4 border-white/30">
+                {level.icon}
+              </div>
+              <div className="bg-white/20 inline-block px-3 py-0.5 rounded-full backdrop-blur-sm mb-1 border-2 border-white/30">
+                <p className="text-[10px] font-black tracking-widest flex items-center gap-1"><Star size={10} fill="white"/> {praiseText} <Star size={10} fill="white"/></p>
+              </div>
+              <h2 className="text-3xl font-black tracking-wider drop-shadow-md text-stroke-sm">{level.answer}</h2>
+            </div>
+
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto min-h-0">
+              <div className="bg-white p-4 rounded-[1.5rem] border-4 border-green-200 shadow-[0_4px_0_0_rgba(0,0,0,0.05)]">
+                <h3 className="flex items-center gap-2 text-green-600 font-black mb-1 text-xs uppercase tracking-widest">
+                  <Navigation size={18} strokeWidth={3} />
+                  GO HERE
+                </h3>
+                <p className="text-xl font-black text-gray-800 leading-tight mb-0.5">{level.locationName}</p>
+                <p className="text-xs text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full inline-block">{level.locationEng}</p>
+              </div>
+
+              <div className="text-sm font-bold text-gray-700 leading-relaxed bg-yellow-100 p-4 rounded-[1.5rem] border-4 border-yellow-200 shadow-inner">
+                💡 <span className="text-gray-900">{level.description}</span>
+              </div>
+              
+              <div className="text-center pb-2">
+                 <p className="text-sm font-bold text-blue-600 animate-pulse">
+                   🗺️ Check your PAPER MAP to find this spot!
+                 </p>
+              </div>
+              
+              <div className="pb-4">
+                <button 
+                  onClick={handleOkClick} 
+                  className={`w-full py-3 rounded-xl font-black border-b-4 btn-cartoon text-lg shadow-sm flex items-center justify-center gap-2 ${okButtonStyle}`}
+                >
+                  <Check size={24} strokeWidth={3} /> {okButtonText}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // 解謎模式
+          <div className="flex flex-col h-full bg-[#FFF8E7]">
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center text-center min-h-0">
+                <div className="bg-yellow-300 text-yellow-900 px-4 py-1 rounded-full text-xs font-black mb-3 shadow-[0_2px_0_0_#ca8a04] border-2 border-yellow-400 uppercase tracking-widest transform -rotate-2 shrink-0">
+                  Mission #{level.id}
+                </div>
+                
+                {/* 謎題區塊 */}
+                <div className="flex items-center justify-center gap-3 px-2">
+                  <p className="text-xl sm:text-2xl font-black text-gray-800 leading-snug drop-shadow-sm">
+                    "{level.clue}"
+                  </p>
+                </div>
+                
+                {activeHint === 'puzzle' && (
+                  <div className="mt-4 flex gap-2 flex-wrap justify-center animate-in fade-in slide-in-from-bottom-2">
+                    {level.answer.split('').sort(() => Math.random() - 0.5).map((char, i) => (
+                      <span key={i} className="bg-white text-blue-500 font-black w-8 h-8 rounded-full flex items-center justify-center shadow-md border-2 border-blue-100">{char}</span>
+                    ))}
+                  </div>
+                )}
+                {activeHint === 'trans' && (
+                  <div className="mt-4 bg-white/90 p-3 rounded-2xl text-green-700 font-bold border-4 border-green-200 animate-in fade-in slide-in-from-bottom-2 shadow-sm max-w-xs">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] bg-green-100 text-green-800 px-2 py-0.5 rounded-full w-max mx-auto">✨ 中文提示</span>
+                      <span>{level.chineseHint}</span>
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            <div className="px-4 pb-2 text-center shrink-0">
+              
+              {/* V39 Update: Message Container (Fixed Height) */}
+              {/* 這個容器高度固定為 h-6 (24px)，確保文字出現時不會推擠其他元素 */}
+              <div className="h-6 flex items-center justify-center mb-1">
+                {errorMsg && (
+                   <div className={`text-white text-[12px] font-black uppercase tracking-wide inline-block px-4 py-1 rounded-full shadow-sm transform rotate-1 animate-bounce border border-white ${errorMsg.includes("CLOSE") || errorMsg.includes("KEEP") ? 'bg-yellow-500' : 'bg-red-500'}`}>
+                    {errorMsg}
+                  </div>
+                )}
+              </div>
+
+              {/* 法寶按鈕列 */}
+              <div className="flex justify-center gap-4 mb-3 relative z-10">
+                <button 
+                  onClick={() => handleLifelineClick('puzzle')} 
+                  disabled={!lifelines.puzzle}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center border-b-4 transition-all lifeline-btn ${lifelines.puzzle ? 'bg-purple-400 border-purple-600 text-white active:border-b-0 active:translate-y-1' : 'bg-gray-300 border-gray-400 text-gray-500'}`}
+                >
+                  {lifelines.puzzle ? <Puzzle size={24} /> : <Lock size={20} />}
+                </button>
+                <button 
+                  onClick={() => handleLifelineClick('flash')} 
+                  disabled={!lifelines.flash}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center border-b-4 transition-all lifeline-btn ${lifelines.flash ? 'bg-yellow-400 border-yellow-600 text-yellow-900 active:border-b-0 active:translate-y-1' : 'bg-gray-300 border-gray-400 text-gray-500'}`}
+                >
+                  {lifelines.flash ? <Flashlight size={24} /> : <Lock size={20} />}
+                </button>
+                <button 
+                  onClick={() => handleLifelineClick('trans')} 
+                  disabled={!lifelines.trans}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center border-b-4 transition-all lifeline-btn ${lifelines.trans ? 'bg-pink-400 border-pink-600 text-white active:border-b-0 active:translate-y-1' : 'bg-gray-300 border-gray-400 text-gray-500'}`}
+                >
+                  {lifelines.trans ? <Globe size={24} /> : <Lock size={20} />}
+                </button>
+              </div>
+
+              {/* Letter Slots */}
+              <div className="h-20 w-full flex items-center justify-center">
+                <LetterSlots 
+                  inputArray={inputArray} 
+                  lockedIndices={lockedIndices}
+                />
+              </div>
+            </div>
+
+            <VirtualKeyboard onKeyClick={onKeyClick} onSubmit={onSubmit} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ----------------------------------------------------------------------
+// 6. 主程式組件
+// ----------------------------------------------------------------------
+function BingoGameV39() {
+  const [gridLevels, setGridLevels] = useState([]); 
+  const [solved, setSolved] = useState([]);
+  const [currentLevel, setCurrentLevel] = useState(null);
+  
+  const [inputArray, setInputArray] = useState([]);
+  const [lockedIndices, setLockedIndices] = useState([]);
+  
+  const [showResult, setShowResult] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [showInstructions, setShowInstructions] = useState(false); 
+  const [bingoIndices, setBingoIndices] = useState([]); 
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [praiseText, setPraiseText] = useState("CORRECT!");
+  
+  const [lifelines, setLifelines] = useState({ puzzle: true, flash: true, trans: true });
+  const [activeHint, setActiveHint] = useState(null); 
+  
+  const [showFinalMission, setShowFinalMission] = useState(false);
+
+  const vibrate = useCallback((pattern) => {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }, []);
+
+  const shuffleArray = (array) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
+  useEffect(() => {
+    const savedOrder = localStorage.getItem('bingo_grid_order_v39');
+    let currentGrid = [];
+    if (savedOrder) {
+      const orderIds = JSON.parse(savedOrder);
+      currentGrid = orderIds.map(id => LEVELS_SOURCE.find(l => l.id === id));
+    } else {
+      currentGrid = shuffleArray(LEVELS_SOURCE);
+      const orderIds = currentGrid.map(l => l.id);
+      localStorage.setItem('bingo_grid_order_v39', JSON.stringify(orderIds));
+    }
+    setGridLevels(currentGrid);
+
+    const savedSolved = localStorage.getItem('bingo_solved_v39');
+    if (savedSolved) {
+      const savedSolvedIds = JSON.parse(savedSolved);
+      setSolved(savedSolvedIds);
+      if (savedSolvedIds.length > 0) setShowInstructions(false);
+      checkBingoLines(savedSolvedIds, currentGrid);
+    }
+
+    const savedLifelines = localStorage.getItem('bingo_lifelines_v39');
+    if (savedLifelines) {
+      setLifelines(JSON.parse(savedLifelines));
+    }
+  }, []);
+
+  const checkBingoLines = (currentSolvedIds, currentGrid) => {
+    if (!currentGrid || currentGrid.length === 0) return;
+    const newBingoIndices = [];
+    WINNING_INDICES.forEach(lineIndices => {
+      const isLineComplete = lineIndices.every(index => {
+        const levelId = currentGrid[index].id;
+        return currentSolvedIds.includes(levelId);
+      });
+      if (isLineComplete) newBingoIndices.push(...lineIndices);
+    });
+    setBingoIndices([...new Set(newBingoIndices)]);
+  };
+
+  const handleGridClick = (level) => {
+    if (solved.includes(level.id)) {
+      setCurrentLevel(level);
+      setShowResult(true);
+      setPraiseText("FOUND!"); 
+    } else {
+      setCurrentLevel(level);
+      setShowResult(false);
+      setErrorMsg("");
+      setActiveHint(null); 
+      setInputArray(new Array(level.answer.length).fill(""));
+      setLockedIndices(new Array(level.answer.length).fill(false));
+    }
+  };
+
+  const handleKeyClick = (key) => {
+    setErrorMsg("");
+    vibrate(15);
+    
+    if (!currentLevel) return;
+
+    if (key === 'BACKSPACE') {
+      const newArray = [...inputArray];
+      let indexToDelete = -1;
+      for (let i = newArray.length - 1; i >= 0; i--) {
+        if (newArray[i] !== "" && !lockedIndices[i]) {
+          indexToDelete = i;
+          break;
+        }
+      }
+      if (indexToDelete !== -1) {
+        newArray[indexToDelete] = "";
+        setInputArray(newArray);
+      }
+    } else {
+      const newArray = [...inputArray];
+      const emptyIndex = newArray.findIndex((char, i) => char === "" && !lockedIndices[i]);
+      if (emptyIndex !== -1) {
+        newArray[emptyIndex] = key;
+        setInputArray(newArray);
+      } else {
+         vibrate(50);
+      }
+    }
+  };
+
+  const handleUseLifeline = (type) => {
+    const newLifelines = { ...lifelines, [type]: false };
+    setLifelines(newLifelines);
+    localStorage.setItem('bingo_lifelines_v39', JSON.stringify(newLifelines));
+
+    if (type === 'puzzle') {
+      setActiveHint('puzzle');
+    } else if (type === 'flash') {
+      if (currentLevel) {
+        const firstChar = currentLevel.answer.charAt(0);
+        const newArray = [...inputArray];
+        const newLocked = [...lockedIndices];
+        newArray[0] = firstChar;
+        newLocked[0] = true;
+        setInputArray(newArray);
+        setLockedIndices(newLocked);
+      }
+    } else if (type === 'trans') {
+      setActiveHint('trans'); 
+    }
+    vibrate([50, 100]); 
+  };
+
+  const handleSubmit = (e) => {
+    if (e) e.preventDefault();
+    if (!currentLevel) return;
+    
+    const correctString = currentLevel.answer;
+    
+    const newLocked = [...lockedIndices];
+    let isFullMatch = true;
+    let correctCount = 0;
+
+    for (let i = 0; i < correctString.length; i++) {
+      if (inputArray[i] === correctString[i]) {
+        newLocked[i] = true; 
+        correctCount++;
+      } else {
+        isFullMatch = false; 
+      }
+    }
+
+    if (isFullMatch) {
+      vibrate([50, 50, 50]);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+      const randomPraise = PRAISE_WORDS[Math.floor(Math.random() * PRAISE_WORDS.length)];
+      setPraiseText(randomPraise);
+      const newSolved = [...solved, currentLevel.id];
+      if (!solved.includes(currentLevel.id)) {
+        setSolved(newSolved);
+        localStorage.setItem('bingo_solved_v39', JSON.stringify(newSolved));
+        checkBingoLines(newSolved, gridLevels);
+      }
+      setShowResult(true);
+    } else {
+      vibrate(100);
+      setLockedIndices(newLocked); 
+      
+      const cleanedArray = inputArray.map((char, i) => {
+        return newLocked[i] ? char : ""; 
+      });
+      setInputArray(cleanedArray);
+
+      const mistakes = correctString.length - correctCount;
+      if (mistakes <= 2) {
+         setErrorMsg("SO CLOSE! (KEPT GREEN)"); 
+      } else {
+         setErrorMsg("TRY AGAIN!");
+      }
+    }
+  };
+
+  const handleReset = () => {
+    if(window.confirm("RESET GAME? This will SHUFFLE your card & RESTORE LIFELINES!")) {
+      localStorage.removeItem('bingo_solved_v39');
+      localStorage.removeItem('bingo_grid_order_v39');
+      localStorage.removeItem('bingo_lifelines_v39');
+      
+      setSolved([]);
+      setBingoIndices([]);
+      setLifelines({ puzzle: true, flash: true, trans: true }); 
+      setShowInstructions(false);
+      window.scrollTo(0, 0);
+      
+      const newGrid = shuffleArray(LEVELS_SOURCE);
+      setGridLevels(newGrid);
+      const orderIds = newGrid.map(l => l.id);
+      localStorage.setItem('bingo_grid_order_v39', JSON.stringify(orderIds));
+    }
+  };
+
+  const progress = Math.round((solved.length / 9) * 100);
+
+  if (gridLevels.length === 0) return <div className="h-[100dvh] flex items-center justify-center font-bold text-white text-xl">Loading...</div>;
+
+  return (
+    <div className="h-[100dvh] w-full relative flex flex-col font-fredoka text-gray-800 overflow-hidden">
+      <GlobalStyles />
+      {showConfetti && <ConfettiExplosion />}
+
+      {/* Header */}
+      <header className="wave-header pt-safe-top px-4 z-10 shrink-0 shadow-lg relative flex flex-col justify-end min-h-[80px]">
+        <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-2 rounded-xl shadow-[0_3px_0_0_rgba(0,0,0,0.2)] border-2 border-green-700 transform -rotate-6">
+              <MapPin className="w-5 h-5 text-green-600 fill-green-100" strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1 className="text-lg font-black tracking-tight text-white drop-shadow-md stroke-black" style={{textShadow: '2px 2px 0px #064e3b'}}>ALPHABET HUNTERS</h1>
+            </div>
+          </div>
+          <div className="flex flex-col items-end w-1/3">
+            <span className="text-[10px] font-black text-white mb-1 drop-shadow-md">{solved.length}/9 FOUND</span>
+            <div className="w-full bg-black/20 h-3 rounded-full overflow-hidden border-2 border-white/40 shadow-inner">
+              <div className="bg-yellow-400 h-full transition-all duration-500 border-r-4 border-yellow-600 relative overflow-hidden" style={{ width: `${progress}%` }}>
+                 <div className="absolute inset-0 bg-white/20" style={{backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent)', backgroundSize: '1rem 1rem'}}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 p-3 w-full max-w-md mx-auto flex flex-col min-h-0 overflow-y-auto">
+        
+        {/* Instructions */}
+        <div className="mb-1 shrink-0 flex justify-end">
+          <button 
+            onClick={() => setShowInstructions(!showInstructions)} 
+            className="text-[10px] font-black text-green-700 bg-white px-2 py-1 rounded-full border-b-2 border-green-200 shadow-sm flex items-center gap-1 active:border-b-0 active:translate-y-0.5 transition-all"
+          >
+            <HelpCircle size={14} strokeWidth={2.5} /> HELP
+          </button>
+        </div>
+        
+        {showInstructions && (
+          <div className="mb-2 p-2 text-xs text-gray-600 bg-white rounded-xl shadow-[0_4px_0_0_rgba(0,0,0,0.1)] border-2 border-green-100 absolute top-24 left-4 right-4 z-20 animate-in fade-in slide-in-from-top-2">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1 w-full">
+                <div className="flex gap-2 items-center"><span className="bg-yellow-400 text-yellow-900 w-4 h-4 rounded-md flex items-center justify-center font-black text-[10px] border-b-2 border-yellow-600">1</span>Tap number</div>
+                <div className="flex gap-2 items-center"><span className="bg-yellow-400 text-yellow-900 w-4 h-4 rounded-md flex items-center justify-center font-black text-[10px] border-b-2 border-yellow-600">2</span>Type word</div>
+                <div className="flex gap-2 items-center"><span className="bg-yellow-400 text-yellow-900 w-4 h-4 rounded-md flex items-center justify-center font-black text-[10px] border-b-2 border-yellow-600">3</span>Find spot!</div>
+              </div>
+              <button onClick={()=>setShowInstructions(false)}><X size={18} className="text-gray-400"/></button>
+            </div>
+          </div>
+        )}
+
+        {/* Grid Area */}
+        <BingoGrid 
+          gridLevels={gridLevels} 
+          solved={solved} 
+          bingoIndices={bingoIndices} 
+          onGridClick={handleGridClick} 
+        />
+
+        {/* Footer Area */}
+        <div className="mt-auto pt-2 shrink-0 flex flex-col items-center gap-2 pb-safe-bottom">
+            <button onClick={handleReset} className="text-white/80 text-[10px] font-bold underline p-2 hover:text-white drop-shadow-md">
+              RESET GAME
+            </button>
+        </div>
+      </main>
+
+      {/* Modals */}
+      <GameModal 
+        level={currentLevel}
+        showResult={showResult}
+        isLastLevel={solved.length === 9}
+        inputArray={inputArray}
+        lockedIndices={lockedIndices}
+        errorMsg={errorMsg}
+        praiseText={praiseText}
+        lifelines={lifelines}
+        activeHint={activeHint}
+        onClose={() => setCurrentLevel(null)}
+        onKeyClick={handleKeyClick}
+        onSubmit={handleSubmit}
+        onUseLifeline={handleUseLifeline}
+        onFinalMission={() => setShowFinalMission(true)}
+      />
+
+      {/* V37: Final Mission Modal */}
+      {showFinalMission && <FinalMissionModal onClose={() => setShowFinalMission(false)} />}
+    </div>
+  );
+}
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<BingoGameV39 />);
+  </script>
+</body>
+</html>
