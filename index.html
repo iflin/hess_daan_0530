@@ -28,6 +28,10 @@
     @keyframes slideInFromBottom { from { transform: translateY(8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
     @keyframes slideInFromTop    { from { transform: translateY(-8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
     @keyframes slideInFromRight  { from { transform: translateX(16px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+
+    /* Lifeline display: only visible on phones tall enough to have spare space */
+    .lifeline-display { display: none; }
+    @media (min-height: 700px) { .lifeline-display { display: flex; } }
   </style>
 </head>
 <body>
@@ -424,7 +428,7 @@ const VirtualKeyboard = ({ onKeyClick, onSubmit }) => {
 // RWD 九宮格 (橡皮筋比例: aspect-square)
 const BingoGrid = ({ gridLevels, solved, bingoIndices, onGridClick }) => {
   return (
-    <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0 my-2 px-1">
+    <div className="w-full flex justify-center px-1 py-2">
       <div className="bg-[#FFF8E7] p-2 rounded-[1.5rem] shadow-[0_6px_0_0_rgba(0,0,0,0.15)] border-4 border-white w-full max-w-[420px] aspect-square flex flex-col justify-center relative">
         <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-gray-300 shadow-inner"></div>
         <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gray-300 shadow-inner"></div>
@@ -1197,7 +1201,7 @@ function App() {
               <MapPin className="w-5 h-5 text-green-600 fill-green-100" strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-white drop-shadow-md stroke-black" style={{textShadow: '2px 2px 0px #064e3b'}}>ALPHABET HUNTERS</h1>
+              <h1 className="text-sm sm:text-base font-bold tracking-tight text-white drop-shadow-md whitespace-nowrap" style={{textShadow: '2px 2px 0px #064e3b'}}>ALPHABET HUNTERS</h1>
             </div>
           </div>
           <div className="flex flex-col items-end w-1/3">
@@ -1230,20 +1234,66 @@ function App() {
           </button>
         </div>
 
-        {/* 完美控制 Grid 的高度縮放 */}
-        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0">
-          <BingoGrid 
-            gridLevels={gridLevels} 
-            solved={solved} 
-            bingoIndices={bingoIndices} 
-            onGridClick={handleGridClick} 
-          />
+        {/* Bingo Grid */}
+        <BingoGrid
+          gridLevels={gridLevels}
+          solved={solved}
+          bingoIndices={bingoIndices}
+          onGridClick={handleGridClick}
+        />
+
+        {/* Sticker collection progress strip */}
+        {stickerOrder.length > 0 && (
+          <div className="flex justify-center gap-1 mt-1 mb-1 shrink-0 px-2">
+            {stickerOrder.map((letter, i) => {
+              const collected = i < solved.length;
+              return (
+                <div key={i} className={`flex-1 h-8 rounded-xl flex items-center justify-center text-sm font-bold border-2 transition-all duration-300
+                  ${collected
+                    ? 'bg-yellow-400 border-yellow-600 text-white shadow-md'
+                    : 'bg-white/20 border-white/35 text-white/45'
+                  }`}
+                  style={{ fontFamily: "'Comic Neue', cursive" }}>
+                  {collected ? letter : '·'}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Lifeline display – shown only on tall screens (≥700px height) via CSS */}
+        <div className="lifeline-display shrink-0 flex-col items-center mt-5 gap-1">
+          <p className="text-[9px] text-white/55 font-bold uppercase tracking-widest mb-1">Mission Tools</p>
+          <div className="flex justify-center gap-5">
+            {[
+              { key: 'puzzle', emoji: '🧩', label: 'Hint' },
+              { key: 'flash',  emoji: '🔦', label: 'Reveal' },
+              { key: 'trans',  emoji: '🌏', label: 'Translate' },
+            ].map(({ key, emoji, label }) => (
+              <div key={key} className="flex flex-col items-center gap-1">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl border-2 transition-all
+                  ${lifelines[key]
+                    ? 'bg-white/30 border-white/50 shadow-sm'
+                    : 'bg-black/15 border-transparent opacity-25'
+                  }`}>
+                  {emoji}
+                </div>
+                <span className={`text-[9px] font-bold ${lifelines[key] ? 'text-white/65' : 'text-white/30'}`}
+                  style={{ fontFamily: "'Comic Neue', cursive" }}>
+                  {lifelines[key] ? label : 'USED'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-auto pt-2 shrink-0 flex flex-col items-center gap-2 pb-safe-bottom">
-            <button onClick={handleReset} className="text-white/80 text-[10px] font-bold underline p-2 hover:text-white drop-shadow-md">
-              RESET GAME
-            </button>
+        {/* Spacer pushes RESET to bottom */}
+        <div className="flex-1 min-h-[8px]" />
+
+        <div className="shrink-0 flex flex-col items-center gap-2 pb-safe-bottom pt-1">
+          <button onClick={handleReset} className="text-white/70 text-[10px] font-bold underline p-2 hover:text-white drop-shadow-md">
+            RESET GAME
+          </button>
         </div>
       </main>
 
