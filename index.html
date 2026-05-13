@@ -974,6 +974,7 @@ function App() {
   const [activeHint, setActiveHint] = useState(null); 
   
   const [showFinalMission, setShowFinalMission] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const vibrate = useCallback((pattern) => {
     if (navigator.vibrate) navigator.vibrate(pattern);
@@ -1149,28 +1150,31 @@ function App() {
   };
 
   const handleReset = () => {
-    if(window.confirm("RESET GAME? This will SHUFFLE your card & RESTORE LIFELINES!")) {
-      localStorage.removeItem('bingo_solved_v43');
-      localStorage.removeItem('bingo_grid_order_v43');
-      localStorage.removeItem('bingo_lifelines_v43');
-      localStorage.removeItem('bingo_onboarding_v43'); 
-      localStorage.removeItem('bingo_stickers_v43');
-      
-      setSolved([]);
-      setBingoIndices([]);
-      setLifelines({ puzzle: true, flash: true, trans: true }); 
-      window.scrollTo(0, 0);
-      
-      const newGrid = shuffleArray(LEVELS_SOURCE);
-      setGridLevels(newGrid);
-      localStorage.setItem('bingo_grid_order_v43', JSON.stringify(newGrid.map(l => l.id)));
+    setShowResetConfirm(true);
+  };
 
-      const shuffledStickers = shuffleArray(TARGET_PHRASE);
-      setStickerOrder(shuffledStickers);
-      localStorage.setItem('bingo_stickers_v43', JSON.stringify(shuffledStickers));
-      
-      setShowOnboarding(true);
-    }
+  const doReset = () => {
+    setShowResetConfirm(false);
+    localStorage.removeItem('bingo_solved_v43');
+    localStorage.removeItem('bingo_grid_order_v43');
+    localStorage.removeItem('bingo_lifelines_v43');
+    localStorage.removeItem('bingo_onboarding_v43');
+    localStorage.removeItem('bingo_stickers_v43');
+
+    setSolved([]);
+    setBingoIndices([]);
+    setLifelines({ puzzle: true, flash: true, trans: true });
+    window.scrollTo(0, 0);
+
+    const newGrid = shuffleArray(LEVELS_SOURCE);
+    setGridLevels(newGrid);
+    localStorage.setItem('bingo_grid_order_v43', JSON.stringify(newGrid.map(l => l.id)));
+
+    const shuffledStickers = shuffleArray(TARGET_PHRASE);
+    setStickerOrder(shuffledStickers);
+    localStorage.setItem('bingo_stickers_v43', JSON.stringify(shuffledStickers));
+
+    setShowOnboarding(true);
   };
 
   const progress = Math.round((solved.length / 9) * 100);
@@ -1262,6 +1266,45 @@ function App() {
       />
 
       {showFinalMission && <FinalPuzzleModal onClose={() => setShowFinalMission(false)} stickers={stickerOrder} />}
+
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
+          <div className="animate-in zoom-in-95 duration-300 bg-[#FFF8E7] rounded-3xl border-4 border-white shadow-2xl max-w-xs w-full text-center overflow-hidden">
+            {/* Top banner */}
+            <div className="bg-red-500 px-6 py-4">
+              <div className="text-4xl mb-1">⚠️</div>
+              <p className="text-white font-black text-lg leading-tight tracking-wide" style={{ fontFamily: "'Comic Neue', cursive" }}>
+                RESET GAME?
+              </p>
+            </div>
+            {/* Body */}
+            <div className="px-6 py-5">
+              <p className="text-gray-700 font-bold text-sm leading-relaxed" style={{ fontFamily: "'Comic Neue', cursive" }}>
+                This will <span className="text-orange-500">SHUFFLE</span> your card &amp; <span className="text-green-600">RESTORE</span> all lifelines!
+              </p>
+              <p className="text-gray-400 text-xs mt-2" style={{ fontFamily: "'Comic Neue', cursive" }}>
+                Your progress will be lost.
+              </p>
+            </div>
+            {/* Buttons */}
+            <div className="flex gap-3 px-6 pb-6">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="btn-cartoon flex-1 py-3 rounded-2xl font-black text-sm text-gray-600 bg-gray-200 border-2 border-gray-300"
+                style={{ fontFamily: "'Comic Neue', cursive" }}>
+                CANCEL
+              </button>
+              <button
+                onClick={doReset}
+                className="btn-cartoon flex-1 py-3 rounded-2xl font-black text-sm text-white bg-red-500 border-2 border-red-700"
+                style={{ fontFamily: "'Comic Neue', cursive" }}>
+                RESET! 🔄
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
