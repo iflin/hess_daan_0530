@@ -105,14 +105,14 @@ const GlobalStyles = () => (
     }
 
     .lifeline-btn {
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
     .lifeline-btn:disabled {
-      opacity: 0.6;
-      filter: grayscale(100%);
+      opacity: 0.45;
+      filter: grayscale(85%);
       cursor: not-allowed;
-      transform: translateY(2px);
-      border-bottom-width: 0;
+      transform: translateY(1px);
+      border-bottom-width: 2px !important;
     }
 
     .wave-header {
@@ -906,28 +906,24 @@ const GameModal = ({ level, showResult, isLastLevel, inputArray, lockedIndices, 
               </div>
 
               {/* 法寶按鈕列 */}
-              <div className="flex justify-center gap-4 mb-3">
-                <button 
-                  onClick={() => handleLifelineClick('puzzle')} 
-                  disabled={!lifelines.puzzle}
-                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center border-b-4 transition-all lifeline-btn ${lifelines.puzzle ? 'bg-purple-400 border-purple-600 text-white active:border-b-0 active:translate-y-1' : 'bg-gray-300 border-gray-400 text-gray-500'}`}
-                >
-                  {lifelines.puzzle ? <Puzzle size={20} /> : <Lock size={18} />}
-                </button>
-                <button 
-                  onClick={() => handleLifelineClick('flash')} 
-                  disabled={!lifelines.flash}
-                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center border-b-4 transition-all lifeline-btn ${lifelines.flash ? 'bg-yellow-400 border-yellow-600 text-yellow-900 active:border-b-0 active:translate-y-1' : 'bg-gray-300 border-gray-400 text-gray-500'}`}
-                >
-                  {lifelines.flash ? <Flashlight size={20} /> : <Lock size={18} />}
-                </button>
-                <button 
-                  onClick={() => handleLifelineClick('trans')} 
-                  disabled={!lifelines.trans}
-                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center border-b-4 transition-all lifeline-btn ${lifelines.trans ? 'bg-pink-400 border-pink-600 text-white active:border-b-0 active:translate-y-1' : 'bg-gray-300 border-gray-400 text-gray-500'}`}
-                >
-                  {lifelines.trans ? <Globe size={20} /> : <Lock size={18} />}
-                </button>
+              <div className="flex justify-center gap-2 mb-3">
+                {[
+                  { key: 'puzzle', emoji: '🧩', label: 'HINT',      colors: 'bg-purple-400 border-purple-700 text-white' },
+                  { key: 'flash',  emoji: '🔦', label: 'REVEAL',    colors: 'bg-yellow-400 border-yellow-600 text-yellow-900' },
+                  { key: 'trans',  emoji: '🌏', label: 'TRANSLATE', colors: 'bg-pink-400 border-pink-700 text-white' },
+                ].map(({ key, emoji, label, colors }) => (
+                  <button
+                    key={key}
+                    onClick={() => handleLifelineClick(key)}
+                    disabled={!lifelines[key]}
+                    className={`flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-2xl border-b-4 shadow-md min-w-[72px] btn-cartoon lifeline-btn
+                      ${lifelines[key] ? colors : 'bg-gray-200 border-gray-300 text-gray-400'}`}
+                  >
+                    <span className="text-xl leading-none">{lifelines[key] ? emoji : '🔒'}</span>
+                    <span className="text-[9px] font-black tracking-wider leading-none mt-0.5"
+                      style={{ fontFamily: "'Comic Neue', cursive" }}>{label}</span>
+                  </button>
+                ))}
               </div>
 
               {/* 字母輸入框 */}
