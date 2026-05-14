@@ -1,61 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Alphabet Hunters 🗺️</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.js"></script>
-  <style>
-    /* Safe-area padding helpers (for iOS notch / home bar) */
-    .pt-safe-top  { padding-top: env(safe-area-inset-top, 0px); }
-    .pb-safe      { padding-bottom: env(safe-area-inset-bottom, 0px); }
-    .pb-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
-
-    /* Tailwind animate-in utilities (subset of tailwindcss-animate) */
-    .animate-in { animation-duration: 150ms; animation-fill-mode: both; }
-    .fade-in    { animation-name: fadeIn; }
-    .zoom-in-95 { animation-name: zoomIn95; }
-    .slide-in-from-bottom-2 { animation-name: slideInFromBottom; }
-    .slide-in-from-top-2    { animation-name: slideInFromTop; }
-    .slide-in-from-right-4  { animation-name: slideInFromRight; }
-    .duration-300 { animation-duration: 300ms; }
-    @keyframes fadeIn            { from { opacity: 0 } to { opacity: 1 } }
-    @keyframes zoomIn95          { from { opacity: 0; transform: scale(.95) } to { opacity: 1; transform: scale(1) } }
-    @keyframes slideInFromBottom { from { transform: translateY(8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-    @keyframes slideInFromTop    { from { transform: translateY(-8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-    @keyframes slideInFromRight  { from { transform: translateX(16px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="text/babel" data-presets="react">
-    const { useState, useEffect, useCallback } = React;
-
-    /* ── Lucide icons with emoji fallbacks ──────────────────────────── */
-    const _L = window.LucideReact || {};
-    const _icon = (emoji) => ({ size = 24, className = '', strokeWidth }) =>
-      <span className={className} style={{ fontSize: Math.round(size * 0.85) + 'px', display: 'inline-flex', alignItems: 'center' }}>{emoji}</span>;
-
-    const Trophy     = _L.Trophy     || _icon('🏆');
-    const MapPin     = _L.MapPin     || _icon('📍');
-    const X          = _L.X          || _icon('✕');
-    const Navigation = _L.Navigation || _icon('🧭');
-    const HelpCircle = _L.HelpCircle || _icon('❓');
-    const Delete     = _L.Delete     || _icon('⌫');
-    const Star       = _L.Star       || _icon('★');
-    const Puzzle     = _L.Puzzle     || _icon('🧩');
-    const Flashlight = _L.Flashlight || _L.Torch || _icon('🔦');
-    const Globe      = _L.Globe      || _icon('🌏');
-    const Lock       = _L.Lock       || _icon('🔒');
-    const Check      = _L.Check      || _icon('✓');
-    const Gift       = _L.Gift       || _icon('🎁');
-    const Sparkles   = _L.Sparkles   || _icon('✨');
-    const Backpack   = _L.Backpack   || _icon('🎒');
-
 
 // ----------------------------------------------------------------------
 // 0. 全局樣式與響應式變數
@@ -324,7 +266,7 @@ const ONBOARDING_STEPS = [
   {
     icon: "🧩",
     title: "MAKE A SENTENCE",
-    desc: "集滿九張數位貼紙後，將它們排列成一句「通關密語」，並寫在尋寶圖上，再回到起點（捷運3號出口）領取過關獎品！"
+    desc: "集滿九張數位貼紙後，將它們排列成一句「通關密語」，並回到起點（捷運3號出口）領取過關獎品！"
   },
   {
     icon: "🆘",
@@ -974,7 +916,6 @@ function App() {
   const [activeHint, setActiveHint] = useState(null); 
   
   const [showFinalMission, setShowFinalMission] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const vibrate = useCallback((pattern) => {
     if (navigator.vibrate) navigator.vibrate(pattern);
@@ -1150,31 +1091,28 @@ function App() {
   };
 
   const handleReset = () => {
-    setShowResetConfirm(true);
-  };
+    if(window.confirm("RESET GAME? This will SHUFFLE your card & RESTORE LIFELINES!")) {
+      localStorage.removeItem('bingo_solved_v43');
+      localStorage.removeItem('bingo_grid_order_v43');
+      localStorage.removeItem('bingo_lifelines_v43');
+      localStorage.removeItem('bingo_onboarding_v43'); 
+      localStorage.removeItem('bingo_stickers_v43');
+      
+      setSolved([]);
+      setBingoIndices([]);
+      setLifelines({ puzzle: true, flash: true, trans: true }); 
+      window.scrollTo(0, 0);
+      
+      const newGrid = shuffleArray(LEVELS_SOURCE);
+      setGridLevels(newGrid);
+      localStorage.setItem('bingo_grid_order_v43', JSON.stringify(newGrid.map(l => l.id)));
 
-  const doReset = () => {
-    setShowResetConfirm(false);
-    localStorage.removeItem('bingo_solved_v43');
-    localStorage.removeItem('bingo_grid_order_v43');
-    localStorage.removeItem('bingo_lifelines_v43');
-    localStorage.removeItem('bingo_onboarding_v43');
-    localStorage.removeItem('bingo_stickers_v43');
-
-    setSolved([]);
-    setBingoIndices([]);
-    setLifelines({ puzzle: true, flash: true, trans: true });
-    window.scrollTo(0, 0);
-
-    const newGrid = shuffleArray(LEVELS_SOURCE);
-    setGridLevels(newGrid);
-    localStorage.setItem('bingo_grid_order_v43', JSON.stringify(newGrid.map(l => l.id)));
-
-    const shuffledStickers = shuffleArray(TARGET_PHRASE);
-    setStickerOrder(shuffledStickers);
-    localStorage.setItem('bingo_stickers_v43', JSON.stringify(shuffledStickers));
-
-    setShowOnboarding(true);
+      const shuffledStickers = shuffleArray(TARGET_PHRASE);
+      setStickerOrder(shuffledStickers);
+      localStorage.setItem('bingo_stickers_v43', JSON.stringify(shuffledStickers));
+      
+      setShowOnboarding(true);
+    }
   };
 
   const progress = Math.round((solved.length / 9) * 100);
@@ -1266,50 +1204,6 @@ function App() {
       />
 
       {showFinalMission && <FinalPuzzleModal onClose={() => setShowFinalMission(false)} stickers={stickerOrder} />}
-
-      {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-             style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
-          <div className="animate-in zoom-in-95 duration-300 bg-[#FFF8E7] rounded-3xl border-4 border-white shadow-2xl max-w-xs w-full text-center overflow-hidden">
-            {/* Top banner */}
-            <div className="bg-red-500 px-6 py-4">
-              <div className="text-4xl mb-1">⚠️</div>
-              <p className="text-white font-black text-lg leading-tight tracking-wide" style={{ fontFamily: "'Comic Neue', cursive" }}>
-                RESET GAME?
-              </p>
-            </div>
-            {/* Body */}
-            <div className="px-6 py-5">
-              <p className="text-gray-700 font-bold text-sm leading-relaxed" style={{ fontFamily: "'Comic Neue', cursive" }}>
-                This will <span className="text-orange-500">SHUFFLE</span> your card &amp; <span className="text-green-600">RESTORE</span> all lifelines!
-              </p>
-              <p className="text-gray-400 text-xs mt-2" style={{ fontFamily: "'Comic Neue', cursive" }}>
-                Your progress will be lost.
-              </p>
-            </div>
-            {/* Buttons */}
-            <div className="flex gap-3 px-6 pb-6">
-              <button
-                onClick={() => setShowResetConfirm(false)}
-                className="btn-cartoon flex-1 py-3 rounded-2xl font-black text-sm text-gray-600 bg-gray-200 border-2 border-gray-300"
-                style={{ fontFamily: "'Comic Neue', cursive" }}>
-                CANCEL
-              </button>
-              <button
-                onClick={doReset}
-                className="btn-cartoon flex-1 py-3 rounded-2xl font-black text-sm text-white bg-red-500 border-2 border-red-700"
-                style={{ fontFamily: "'Comic Neue', cursive" }}>
-                RESET! 🔄
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-</body>
-</html>
